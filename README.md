@@ -1,12 +1,12 @@
 # Codes for the project "Interpretation of frequency-dependent seismic responses of finely layered, partially saturated and fractured reservoirs"
 
 
-Copyright (C) 2018-2019
-Georgos Papageorgiou <giorgos.papageorgiou@ed.ac.uk>
-Yuriy Ivanov <yuriy.ivanov@ntnu.no>
+Copyright (C) 2018-2019  
+Georgos Papageorgiou <giorgos.papageorgiou@ed.ac.uk>  
+Yuriy Ivanov <yuriy.ivanov@ntnu.no>  
 
-This file is part of PETROMAKS2 project code base.
-....
+This file is part of PETROMAKS2 project code base.  
+....  
 work in progress.
 
 
