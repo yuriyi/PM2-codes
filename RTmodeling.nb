@@ -3,17 +3,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[         0,          0]
-<<<<<<< HEAD
 NotebookDataLength[    220305,       4911]
 NotebookOptionsPosition[    207768,       4716]
 NotebookOutlinePosition[    208111,       4731]
 CellTagsIndexPosition[    208068,       4728]
-=======
-NotebookDataLength[    269219,       6161]
-NotebookOptionsPosition[    251380,       5874]
-NotebookOutlinePosition[    251733,       5890]
-CellTagsIndexPosition[    251690,       5887]
->>>>>>> f8bc2e5b1ad9590b180abcf8e4c94fef57da06c2
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -1764,7 +1757,7 @@ Cell[BoxData[
    3.7481632859981585`*^9}, {3.7481634207416067`*^9, 
    3.7481634395865984`*^9}, {3.7481635735896416`*^9, 3.7481635745331507`*^9}},
  CellLabel->"In[10]:=",ExpressionUUID->"d1b0567f-ffd6-4ec6-b5d3-fa7ac7bae802"]
-}, Open  ]],
+}, Closed]],
 
 Cell[CellGroupData[{
 
@@ -4721,16 +4714,9 @@ Cell["Null", "Output",ExpressionUUID->"e4326185-f9fa-45d2-80ba-e4c9c4a4640a"]
 }, Open  ]]
 }, Closed]]
 },
-<<<<<<< HEAD
 WindowSize->{1718, 1348},
 WindowMargins->{{Automatic, -7}, {Automatic, 0}},
 FrontEndVersion->"11.3 for Microsoft Windows (64-bit) (March 6, 2018)",
-=======
-WindowSize->{1440, 851},
-WindowMargins->{{0, Automatic}, {Automatic, 0}},
-FrontEndVersion->"11.3 for Mac OS X x86 (32-bit, 64-bit Kernel) (March 5, \
-2018)",
->>>>>>> f8bc2e5b1ad9590b180abcf8e4c94fef57da06c2
 StyleDefinitions->"Default.nb"
 ]
 (* End of Notebook Content *)
@@ -4765,9 +4751,9 @@ Cell[46771, 1220, 7457, 195, 390, "Input",ExpressionUUID->"b17b506d-5a69-45d1-a8
 Cell[54231, 1417, 212, 3, 28, "Input",ExpressionUUID->"ba1d8ada-d434-4775-b72f-6e205d1c62e5"],
 Cell[54446, 1422, 6086, 153, 219, "Input",ExpressionUUID->"e634895c-37b0-4e69-9eac-21794dc36da3"],
 Cell[60535, 1577, 7968, 181, 264, "Input",ExpressionUUID->"d1b0567f-ffd6-4ec6-b5d3-fa7ac7bae802"]
-}, Open  ]],
+}, Closed]],
 Cell[CellGroupData[{
-Cell[68540, 1763, 264, 4, 53, "Subsection",ExpressionUUID->"b9a0e559-e977-4bcb-84fe-98ea291bb321"],
+Cell[68540, 1763, 264, 4, 37, "Subsection",ExpressionUUID->"b9a0e559-e977-4bcb-84fe-98ea291bb321"],
 Cell[68807, 1769, 972, 22, 143, "Input",ExpressionUUID->"30278ee1-bdad-494f-9f36-cc8013096086"],
 Cell[69782, 1793, 626, 15, 48, "Input",ExpressionUUID->"1aecccf8-5f85-4b1f-b1eb-625ef29d538c"],
 Cell[70411, 1810, 680, 17, 48, "Input",ExpressionUUID->"898e37d1-7bf3-4bac-a58d-fb2477340795"],
