@@ -3,10 +3,17 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[         0,          0]
+<<<<<<< HEAD
 NotebookDataLength[    220305,       4911]
 NotebookOptionsPosition[    207768,       4716]
 NotebookOutlinePosition[    208111,       4731]
 CellTagsIndexPosition[    208068,       4728]
+=======
+NotebookDataLength[    269219,       6161]
+NotebookOptionsPosition[    251380,       5874]
+NotebookOutlinePosition[    251733,       5890]
+CellTagsIndexPosition[    251690,       5887]
+>>>>>>> f8bc2e5b1ad9590b180abcf8e4c94fef57da06c2
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -4714,9 +4721,16 @@ Cell["Null", "Output",ExpressionUUID->"e4326185-f9fa-45d2-80ba-e4c9c4a4640a"]
 }, Open  ]]
 }, Closed]]
 },
+<<<<<<< HEAD
 WindowSize->{1718, 1348},
 WindowMargins->{{Automatic, -7}, {Automatic, 0}},
 FrontEndVersion->"11.3 for Microsoft Windows (64-bit) (March 6, 2018)",
+=======
+WindowSize->{1440, 851},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"11.3 for Mac OS X x86 (32-bit, 64-bit Kernel) (March 5, \
+2018)",
+>>>>>>> f8bc2e5b1ad9590b180abcf8e4c94fef57da06c2
 StyleDefinitions->"Default.nb"
 ]
 (* End of Notebook Content *)
