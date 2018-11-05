@@ -49,8 +49,8 @@ Module[
 R1=2(1-p^2 \[Beta]0^2)(\[Delta]+2p^2 \[Alpha]0^2 \[Eta])^2;
 R2=\[Sigma]0+2p^2 \[Beta]0^2 \[Delta]-2p^2 \[Alpha]0^2 (1-2p^2 \[Beta]0^2)\[Eta];
 R=R1/(R2+Sqrt[R2^2+2p^2 \[Beta]0^2 R1]);
-S\[Alpha]=2\[Delta]+2p^2 \[Alpha]0^2 \[Eta]+R;
-S\[Beta]=2(1-p^2 \[Beta]0^2) \[Alpha]0^2/\[Beta]0^2 \[Eta]-R;
+S\[Alpha]=2\[Delta]+2p^2 \[Alpha]0^2 \[Eta]+R//Chop;
+S\[Beta]=2(1-p^2 \[Beta]0^2) \[Alpha]0^2/\[Beta]0^2 \[Eta]-R//Chop;
 req1=Re[1/\[Alpha]0^2-p^2-p^2 S\[Alpha]];
 req2=Re[1/\[Beta]0^2-p^2-p^2 S\[Beta]];
 imq1=Im[1/\[Alpha]0^2-p^2-p^2 S\[Alpha]];
@@ -69,7 +69,6 @@ $Failed);
 
 
 (* ::Input::Initialization:: *)
-SetAttributes[tlLmatrices,Listable];
 tlLmatrices[index_Integer,p_]/;ListQ[tlLayer[index]]:=
 Block[{c, d},
 Set@@@tlLayer[index];
@@ -128,15 +127,15 @@ Exp[I \[Omega] thicknessSet tlQmatrices[indexSet,p][[;;,;;2]]]//Chop;
 
 
 (* ::Input::Initialization:: *)
-tlReflectivity[indexSet:{_Integer..},thicknessSet:{_?Positive..}, p_, \[Omega]_]/;((Length@thicknessSet==Length@indexSet)&&(And@@((#==0)&/@(indexSet-Range[indexSet[[1]],Length[indexSet]])))):=
+tlReflectivity[indexSet:{_Integer..},thicknessSet:{_?Positive..}, p_, \[Omega]_]/;((Length@thicknessSet==Length@indexSet)&&(indexSet==Range[indexSet[[1]],indexSet[[1]]+Length[indexSet]-1])):=
 Module[{f, foldList},
-foldList=Transpose@{tlLayerReflectionTransmission[Most@indexSet, p],tlLayerPhase[Most@indexSet, thicknessSet,p,\[Omega]]};
+foldList=Reverse@Transpose@{tlLayerReflectionTransmission[Most@indexSet, p],tlLayerPhase[Most@indexSet, Most@thicknessSet,p,\[Omega]]};
 f=(#4.(#3+Transpose[#2].#1.Inverse[IdentityMatrix[2]+#3.#1].#2).#4)&;
 Fold[f[#1,#2[[1,1]],#2[[1,2]],DiagonalMatrix@#2[[2]]]&,{{0,0},{0,0}},foldList]//Chop
 ];
 tlReflectivity[indexSet:{_Integer..},thicknessSet:{_?Positive..}, p_, \[Omega]_]/;(Length@thicknessSet==Length@indexSet):=
 Module[{f, foldList},
-foldList=Transpose@{tlLayerReflectionTransmission[Most@indexSet, Most@RotateLeft@indexSet, p],tlLayerPhase[Most@indexSet, thicknessSet,p,\[Omega]]};
+foldList=Reverse@Transpose@{tlLayerReflectionTransmission[Most@indexSet, Most@RotateLeft@indexSet, p],tlLayerPhase[Most@indexSet, Most@thicknessSet,p,\[Omega]]};
 f=(#4.(#3+Transpose[#2].#1.Inverse[IdentityMatrix[2]+#3.#1].#2).#4)&;
 Fold[f[#1,#2[[1,1]],#2[[1,2]],DiagonalMatrix@#2[[2]]]&,{{0,0},{0,0}},foldList]//Chop
 ];
