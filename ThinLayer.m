@@ -9,10 +9,9 @@ BeginPackage["ThinLayer`"]
 tlSetLayer::usage="tlSetLayer[layerIndex, {c11, c13, c33, c44, \[Rho]}] creates a 'tlLayer[layerIndex]' object instance with assiogned numerical values for cijs.";
 tlQLmatrices::usage="tlQmatices[i, p] calculates the Q matrices corresponding to a pre-defined layer with index i for a horizontal slowness p";
 tlLayerReflectionTransmission::usage="tlLayerReflectionTransmission[i, j, p] calculates transmission and reflection coefficients for an interface between pre-defined layers i and j for horizontal slowness p. It can also be called as tlLayerReflectionTransmission[i, p] in which case an interface between layers i, i+1 is assumed"; 
-tlReflectivity::usage="";
-tlDiscreteHankelTransform::usage="";
-tlDiscreteHankelTransform2::usage="";
-tlVisualiseModel::usage="";
+tlReflectivity::usage="tlReflectivity[{i,j, ...},{di, dj, ...}, slowness, angularFreq] calculates the reflection response of a sequecne of pre-initiated layers labelled {i,j,...} with thicknesses {di, dj, ...} where the first and last layers are halfspaces and the first and last sequence is ignored";
+tlDiscreteHankelTransform::usage="tlDiscreteHankelTransform[{f(k1), f(k2), f(k3), ..., f(kmax)}, ord, kmax] returns {xi, H(fi)} as pairs of offsets xi and the Hankel transform H(fi) of order ord of a function f evaluated at k1, ... k(max)";
+tlVisualiseModel::usage="";(*experimental function. Aiming to display layered model with colours for different layers*)
 (* Error Reporting tlSetLayer *)
 tlSetLayer::nonum="Expecting an array of 4 complex and 1 real numeric quantities in arg `2`";
 tlSetLayer::noint="Argument `1` refers to layer label. Positive integer expected";
@@ -118,23 +117,7 @@ Fold[f[#1,Sequence@@#2]&,{{0,0},{0,0}},foldList]
 
 
 (* ::Input::Initialization:: *)
-tlDiscreteHankelTransform[f1_?VectorQ,p_,rmax_]:=Module[{Np,a,aNp1,rv,uv,res,umax,T,J,F1,F2},
-Np=Length@f1;
-a=Developer`ToPackedArray@Table[N[BesselJZero[p,n]],{n,1,Np}];
-aNp1=BesselJZero[p,Np+1];
-umax=aNp1/(2. Pi rmax);
-rv=a/(2. Pi umax);
-uv=a/(2. Pi rmax);
-J=Abs[BesselJ[p+1,a]];
-T=BesselJ[p,TensorProduct[a,a]/(2. Pi rmax umax)]/(TensorProduct[J,J] Pi rmax umax);
-F1=(f1 rmax)/J;
-F2=T.F1;
-Transpose[{uv,J/umax F2}]
-];
-
-
-(* ::Input::Initialization:: *)
-tlDiscreteHankelTransform2[f1_?VectorQ,p_,rmax_]:=Module[{Np,a,aNp1,rv,uv,res,umax,T,J,F1,F2},
+tlDiscreteHankelTransform[f1_?VectorQ,p_:0.,rmax_]:=Module[{Np,a,aNp1,rv,uv,res,umax,T,J,F1,F2},
 Np=Length@f1;
 a=Developer`ToPackedArray@Table[N[BesselJZero[p,n]],{n,1,Np}];
 aNp1=BesselJZero[p,Np+1];
@@ -146,6 +129,26 @@ T=Developer`ToPackedArray@(Table[BesselJ[p,s/(2. Pi rmax umax)],{s,TensorProduct
 F1=(f1 rmax)/J;
 F2=Developer`ToPackedArray[T.F1];
 Transpose[{uv+0.I,J/umax F2}]
+];
+
+
+(* ::Input::Initialization:: *)
+Options[tlVisualiseModel]={ColorSchemeNumber->3, SamplingRate->1000};
+tlVisualiseModel[indexSet:{_Integer..},thicknessSet:{_?Positive..}, nTimeSamples_Integer, opts:OptionsPattern[]]/;(Length@thicknessSet==Length@indexSet):=Module[{layers, colourRules,dt, sr},
+layers=Sort@DeleteDuplicates@indexSet;
+If[IntegerQ@OptionValue[ColorSchemeNumber],
+colourRules=Thread[layers->ColorData[OptionValue[ColorSchemeNumber]]/@Range@Length@layers],
+colourRules=Thread[layers->(ColorData[3]/@Range@Length@layers)]
+];
+If[IntegerQ@OptionValue[SamplingRate]&&OptionValue[SamplingRate]>499,
+sr=OptionValue[SamplingRate],
+sr=1000
+];
+dt=Block[{c, d},
+{c[33],c[44],d}=tlLayer[#1][[3;;]];
+{#2/Sqrt[c[33]/d],#2/Sqrt[c[44]/d]}
+]&;
+ArrayPlot[Transpose[ConstantArray[Join@@MapThread[ConstantArray[#1,Round[sr dt[#1,#2][[1]],1]]&,Reverse/@{Most@indexSet, Most@thicknessSet}],5]],ColorRules->colourRules]
 ];
 
 
