@@ -7,10 +7,13 @@ BeginPackage["ThinLayer`"]
 (* ::Input::Initialization:: *)
 (* Usage Messaging *)
 tlSetLayer::usage="tlSetLayer[layerIndex, {c11, c13, c33, c44, \[Rho]}] creates a 'tlLayer[layerIndex]' object instance with assigned numerical values for cijs.";
+tlGetStiffness::usage="tlGetStiffness[layerIndex] outputs a vector of cijs for a given layer.";
 tlQLmatrices::usage="tlQmatices[i, p] returns the numbers qa, qb and linear transformations L1, L2 decomposing the wave field of horizontal slowness p, in a layer with index i. The output is in the form {{qa, qb}, L1, L2}";
 tlLayerReflectionTransmission::usage="tlLayerReflectionTransmission[i, j, p] calculates transmission T and reflection R matrices for an interface between pre-defined layers i and j for horizontal slowness p. It can also be called as tlLayerReflectionTransmission[i, p] in which case an interface between layers i, i+1 is assumed. The output is of the form {T, R}."; 
 tlReflectivity::usage="tlReflectivity[{i,j, ...},{di, dj, ...}, slowness, angularFreq] calculates the reflection response matrix RR of a sequence of pre-initiated layers labelled {i,j,...} with thicknesses {di, dj, ...} where the first and last layers are halfspaces and the first and last sequence is ignored.";
+tlResponse::usage="tlResponse[{i,j, ...},{di, dj, ...}, slowness, angularFreq,zs,zr] calculates the stress-displacement vector for a stack of layers bounded by two half-spaces. source and receiver are located in the top half-space: source depth: zs, receiver depth: 0, first boundary: zs. the vetor returned is in frequency-slowness domain: {Uz, Srz, Szz, Ur}";
 tlDiscreteHankelTransform::usage="tlDiscreteHankelTransform[{f(k1), f(k2), f(k3), ..., f(kmax)}, ord, kmax] returns {xi, H(fi)} as pairs of offsets xi and the Hankel transform H(fi) of order ord of a function f evaluated at k1, ... k(max)";
+tlDHT2::usage="tlDHT2[N, f[k], ord, kmax] returns {xi, H(f[k])i} as pairs of offsets xi and the Hankel transform H(f[k]) of order ord of a function f[k] passed in as a function";
 tlVisualiseModel::usage="tlVisualiseModel[{i,j, ...},{di, dj, ...}, nSamples] outputs a graphics object visualising different layers with different colours in the time domain.";(*experimental function. Aiming to display layered model with colours for different layers*)
 (* Error Reporting tlSetLayer *)
 tlSetLayer::nonum="Expecting an array of 4 complex and 1 real numeric quantities in arg `2`";
@@ -37,6 +40,10 @@ tlSetLayer[index_Integer,{c11_?NumericQ, c13_?NumericQ, c33_?NumericQ, c44_?Nume
 tlSetLayer[index_Integer,a:({_,_,_,_,_})]/;(Positive[index]):=(Message[tlSetLayer::nonum,index];$Failed);
 tlSetLayer[index_,a:{_,_,_,_,_}]:=(Message[tlSetLayer::noint,index];$Failed);
 tlSetLayer[___]:=(Message[tlSetLayer::noargs];$Failed);
+
+
+(* ::Input::Initialization:: *)
+tlGetStiffness[index_Integer]:=tlLayer[index]
 
 
 (* ::Input::Initialization:: *)
@@ -103,16 +110,34 @@ $Failed);
 
 
 (* ::Input::Initialization:: *)
-tlReflectivity[indexSet:{_Integer..},thicknessSet:{_?Positive..}, p_, \[Omega]_]/;(Length@thicknessSet==Length@indexSet):=
-Module[{f, foldList, CDmats, TRmats, qL, \[Phi]},
+tlReflectivity[indexSet:{_Integer..},thicknessSet:{_?NonNegative..}, p_, \[Omega]_]/;(Length@thicknessSet==Length@indexSet):=
+Module[{f, foldList, CDmats, TRmats, qL},
 qL=tlQLmatrices[indexSet,p];
 CDmats=Transpose@MapThread[
 {Transpose[#1[[2]]].#2[[1]],Transpose[#1[[1]]].#2[[2]]}&,
 {RotateLeft@qL[[;;,{2,3}]],qL[[;;,{2,3}]]}];
 TRmats=Transpose@MapThread[Block[{temp=Transpose@Inverse[#1+#2]},{2temp,Transpose[(#1-#2)].temp}]&,CDmats];
-foldList=Reverse@Most@Transpose@{Sequence@@TRmats,DiagonalMatrix/@Exp[I \[Omega] thicknessSet({{0.,0.}}~Join~Rest@qL[[;;,1]])]};
+foldList=Reverse@Most@Transpose@{Sequence@@TRmats,DiagonalMatrix/@Exp[I \[Omega] thicknessSet({{0.,0.}}~Join~Rest@Most@qL[[;;,1]]~Join~{{0.,0.}})]};
 f=(#4.(#3+Transpose[#2].#1.Inverse[IdentityMatrix[2]+#3.#1].#2).#4)&;
-Fold[f[#1,Sequence@@#2]&,{{0,0},{0,0}},foldList]
+Fold[f[#1,Sequence@@#2]&,{{0,0},{0,0}},foldList]//N//Chop
+];
+
+
+(* ::Input::Initialization:: *)
+tlResponse[indexSet:{_Integer..},thicknessSet:{_?NonNegative..}, p_, \[Omega]_,zs_Real,zr_Real]/;(Length@thicknessSet==Length@indexSet):=
+Module[{ref,qtop,L1top,L2top,Linv,\[Rho],vforce,\[CapitalSigma],S,uvec,bvec,StressDisplacement},
+\[Rho]=tlGetStiffness[indexSet[[1]]][[-1]];
+vforce={0,0,-1/\[Omega]/\[Rho],0};
+{qtop,L1top,L2top}=tlQLmatrices[indexSet[[1]],p];
+ref=DiagonalMatrix[Exp[I \[Omega] qtop zr]].tlReflectivity[indexSet,thicknessSet, p, \[Omega]].DiagonalMatrix[Exp[I \[Omega] qtop zr]];
+Linv=-1/Sqrt[2] Transpose@Join[(I L2top)~Join~(-L1top),(I L2top)~Join~L1top,2];
+
+\[CapitalSigma]=Linv.vforce{1,1,-1,-1};
+S=DiagonalMatrix[Exp[I \[Omega] qtop~Join~(-qtop) zs]].\[CapitalSigma];
+uvec=ref.S[[3;;4]]-S[[1;;2]];
+bvec=1/Sqrt[2] {Sequence@@(I L1top.uvec),Sequence@@(L2top.uvec)};
+StressDisplacement=bvec \[Omega]^2 {1/\[Omega],-1,1,1/\[Omega]}//N;
+StressDisplacement
 ];
 
 
@@ -120,7 +145,7 @@ Fold[f[#1,Sequence@@#2]&,{{0,0},{0,0}},foldList]
 tlDiscreteHankelTransform[f1_?VectorQ,p_:0.,rmax_]:=Module[{Np,a,aNp1,rv,uv,res,umax,T,J,F1,F2},
 Np=Length@f1;
 a=Developer`ToPackedArray@Table[N[BesselJZero[p,n]],{n,1,Np}];
-aNp1=BesselJZero[p,Np+1];
+aNp1=N[BesselJZero[p,Np+1]];
 umax=aNp1/(2. Pi rmax);
 rv=a/(2. Pi umax);
 uv=a/(2. Pi rmax);
@@ -129,6 +154,23 @@ T=Developer`ToPackedArray@(Table[BesselJ[p,s/(2. Pi rmax umax)],{s,TensorProduct
 F1=(f1 rmax)/J;
 F2=Developer`ToPackedArray[T.F1];
 Transpose[{uv+0.I,J/umax F2}]
+];
+
+
+(* ::Input::Initialization:: *)
+tlDHT2[Np_?IntegerQ,ReflFun_,p_:0.,kmax_]:=Module[{a,aNp1,kvec,rvec,rmax,T,J,F1,F2,f1,f2,pi},
+pi=1. ;(* 1 or 2. Pi *)
+a=Developer`ToPackedArray@Table[N[BesselJZero[p,n]],{n,1,Np}];
+aNp1=N[BesselJZero[p,Np+1]];
+kvec=a kmax/aNp1;
+rvec=a/(pi kmax);
+rmax=aNp1/(pi kmax);
+J=Developer`ToPackedArray@Abs@Table[N[BesselJ[p+1,s]],{s,a}];T=Developer`ToPackedArray@(Table[2N[BesselJ[p,s/(pi rmax kmax)]],{s,TensorProduct[a,a]}]/(TensorProduct[J,J]pi rmax kmax));
+f2=ReflFun[#]&/@kvec;
+F2=kmax f2/J;
+F1=Developer`ToPackedArray[T.F2];
+f1=F1 J/rmax;
+Transpose[{rvec+0.I,f1}]
 ];
 
 
