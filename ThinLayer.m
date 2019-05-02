@@ -1,7 +1,7 @@
 (* ::Package:: *)
 
 (* ::Input::Initialization:: *)
-BeginPackage["ThinLayer`"];
+BeginPackage["ThinLayer`"]
 
 
 (* ::Input::Initialization:: *)
@@ -11,8 +11,7 @@ tlQLmatrices::usage="tlQmatices[i, p] returns the numbers qa, qb and linear tran
 tlLayerReflectionTransmission::usage="tlLayerReflectionTransmission[i, j, p] calculates transmission T and reflection R matrices for an interface between pre-defined layers i and j for horizontal slowness p. It can also be called as tlLayerReflectionTransmission[i, p] in which case an interface between layers i, i+1 is assumed. The output is of the form {T, R}."; 
 tlReflectivity::usage="tlReflectivity[{i,j, ...},{di, dj, ...}, slowness, angularFreq] calculates the reflection response matrix RR of a sequence of pre-initiated layers labelled {i,j,...} with thicknesses {di, dj, ...} where the first and last layers are halfspaces and the first and last sequence is ignored.";
 tlDiscreteHankelTransform::usage="tlDiscreteHankelTransform[{f(k1), f(k2), f(k3), ..., f(kmax)}, ord, kmax] returns {xi, H(fi)} as pairs of offsets xi and the Hankel transform H(fi) of order ord of a function f evaluated at k1, ... k(max)";
-tlPrimeRef::usage="";
-tlCreateVisualisation::usage="tlCreateVisualisation[{i,j, ...},{labeli, labelj, ...}, nLayers] outputs a Manipulate object visualising n settable layers with different colours in the depth and time domain.";(*experimental function. Aiming to display layered model with colours for different layers*)
+tlVisualiseModel::usage="tlVisualiseModel[{i,j, ...},{di, dj, ...}, nSamples] outputs a graphics object visualising different layers with different colours in the time domain.";(*experimental function. Aiming to display layered model with colours for different layers*)
 (* Error Reporting tlSetLayer *)
 tlSetLayer::nonum="Expecting an array of 4 complex and 1 real numeric quantities in arg `2`";
 tlSetLayer::noint="Argument `1` refers to layer label. Positive integer expected";
@@ -88,14 +87,6 @@ $Failed);
 
 
 (* ::Input::Initialization:: *)
-SetAttributes[tlPrimeRef,Listable];tlPrimeRef[index1_Integer]/;ListQ@tlLayer[index1]:=
-Block[{c, d},
-{c[11],c[13],c[33],c[44],d}=tlLayer[index1];
-{Sqrt[c[33]/d], Sqrt[c[44]/d],d}
-];
-
-
-(* ::Input::Initialization:: *)
 SetAttributes[tlLayerReflectionTransmission,Listable];tlLayerReflectionTransmission[index1_Integer,index2_Integer,p_]/;(ListQ[tlLayer[index1]]&&ListQ[tlLayer[index2]]):=
 Module[{L1t, L2t, L1b, L2b, C, D, CpD},
 {L1t, L2t, L1b, L2b}=tlQLmatrices[index1,p][[2;;]]~Join~tlQLmatrices[index2,p][[2;;]];
@@ -126,17 +117,6 @@ Fold[f[#1,Sequence@@#2]&,{{0,0},{0,0}},foldList]
 
 
 (* ::Input::Initialization:: *)
-Options[tlTimeDomainNormalIncidence,{SamplingRate->1000, PhaseDelay->5}];
-tlTimeDomainNormalIncidence[indexSet:{_Integer..},thicknessSet:{_?Positive..},ns_Integer?Positive , OptionsPattern[]]/;(Length@thicknessSet==Length@indexSet):=
-Module[{vp,vs,d, tp,ts, sl, td},
-{sl,td}={OptionValue[SamplingRate], OptionValue[PhaseDelay]};
-{vp,vs,d}=Transpose@primeRef[indexSet];
-{tp,ts}={d/vp,d/vs};
-SparseArray[,ns]
-];
-
-
-(* ::Input::Initialization:: *)
 tlDiscreteHankelTransform[f1_?VectorQ,p_:0.,rmax_]:=Module[{Np,a,aNp1,rv,uv,res,umax,T,J,F1,F2},
 Np=Length@f1;
 a=Developer`ToPackedArray@Table[N[BesselJZero[p,n]],{n,1,Np}];
@@ -153,32 +133,23 @@ Transpose[{uv+0.I,J/umax F2}]
 
 
 (* ::Input::Initialization:: *)
-tlCreateVisualisation[lithologyNumbers:{_Integer..},lithologyLabels:{_String..},nOfLayers_Integer]/;((0<nOfLayers<=9)&&(Length@lithologyNumbers==Length@lithologyLabels)):=(*Experimenta (errors if velocity too slow)*)
-Manipulate[{Rescale[depth[[;;,2]],{0,4},{1000,0}],layers},
-Grid[{
-{Control[{{layers,RandomInteger[MinMax[lithologyNumbers],nOfLayers]},ControlType->None}],Null},
-{Dynamic[
-Panel[
-Column[
-SetterBar[Dynamic[layers[[-#]]],Thread[lithologyNumbers->lithologyLabels]]&/@Range[nOfLayers],Spacings->1.(6/Length[layers])
-]
-]
-],
-Control[{{depth,{0,#}&/@Accumulate@RandomReal[{0.1,1},nOfLayers-1]},
-LocatorPane[
-Dynamic[depth,(depth=(Sort[{0,Round[#,0.004]}&/@#[[;;,2]]]))&],
-Dynamic@Graphics[
-MapThread[{ColorData[3][#2],Rectangle@@({{0.1,0},{.5,0}}+#1)}&,{Transpose@{{{0,0}}~Join~depth, depth~Join~{{0,4}}},layers}], 
-PlotRange->{{-.1,.5},{0,4}},
-GridLines->{None,depth[[;;,2]]},
-Background->Lighter@LightGray,
-Frame->True,
-FrameTicks->{{{{0,1000},{1,750},{2,500},{3,250},{4,0}},None},{None,None}},
-FrameStyle->{{Opacity[1],Opacity[0]},{Opacity[0],Opacity[0]}}
-],Appearance->Graphics[{EdgeForm[Gray],LightGray,Polygon[{{-1,1/2},{0,0},{-1,-1/2}}]},ImageSize->10]]&}
-]}
-}],
-ControlPlacement->Top,Deployed->True];
+Options[tlVisualiseModel]={ColorSchemeNumber->3, SamplingRate->1000};
+tlVisualiseModel[indexSet:{_Integer..},thicknessSet:{_?Positive..}, nTimeSamples_Integer, opts:OptionsPattern[]]/;(Length@thicknessSet==Length@indexSet):=Module[{layers, colourRules,dt, sr},
+layers=Sort@DeleteDuplicates@indexSet;
+If[IntegerQ@OptionValue[ColorSchemeNumber],
+colourRules=Thread[layers->ColorData[OptionValue[ColorSchemeNumber]]/@Range@Length@layers],
+colourRules=Thread[layers->(ColorData[3]/@Range@Length@layers)]
+];
+If[IntegerQ@OptionValue[SamplingRate]&&OptionValue[SamplingRate]>499,
+sr=OptionValue[SamplingRate],
+sr=1000
+];
+dt=Block[{c, d},
+{c[33],c[44],d}=tlLayer[#1][[3;;]];
+{#2/Sqrt[c[33]/d],#2/Sqrt[c[44]/d]}
+]&;
+ArrayPlot[Transpose[ConstantArray[Join@@MapThread[ConstantArray[#1,Round[sr dt[#1,#2][[1]],1]]&,Reverse/@{Most@indexSet, Most@thicknessSet}],5]],ColorRules->colourRules]
+];
 
 
 (* ::Input::Initialization:: *)
