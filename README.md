@@ -2,7 +2,7 @@
 
 
 Copyright (C) 2018-2019  
-Georgos Papageorgiou <giorgos.papageorgiou@ed.ac.uk>  
+Giorgos Papageorgiou <giorgos.papageorgiou@ed.ac.uk>  
 Yuriy Ivanov <yuriy.ivanov@ntnu.no>  
 
 This file is part of PETROMAKS2 project code base.  
