@@ -11,7 +11,7 @@ tlGetStiffness::usage="tlGetStiffness[layerIndex] outputs a vector of cijs for a
 tlCijFromThomsen::usage="tlCijFromThomsen[vp0,vs0,\[Epsilon],\[Delta],\[Rho]] outputs {c11, c13, c33, c44, \[Rho]} for a set of Thomsen parameters.";
 tlVTISquirtModuli::usage="tlVTISquirtModuli[\[Epsilon],\[Epsilon]f,\[Alpha],\[Tau]0, \[Omega], lenrat][\[Lambda],\[Mu], \[Phi], Kf] returns {c11, c13, c33, c44} for a given frequency.";
 tlQLmatrices::usage="tlQmatices[i, p, \[Omega]:0] returns the numbers qa, qb and linear transformations L1, L2 decomposing the wave field of horizontal slowness p, in a layer with index i. The output is in the form {{qa, qb}, L1, L2}";
-tlQLmatricesRadicals::usage="[index_Integer,p_,\[Omega]_:1]";
+tlQLmatricesOld::usage="[index_Integer,p_,\[Omega]_:1]";
 tlLayerReflectionTransmission::usage="tlLayerReflectionTransmission[i, j, p] calculates transmission T and reflection R matrices for an interface between pre-defined layers i and j for horizontal slowness p. It can also be called as tlLayerReflectionTransmission[i, p] in which case an interface between layers i, i+1 is assumed. The output is of the form {T, R}."; 
 tlReflectivity::usage="tlReflectivity[{i,j, ...},{di, dj, ...}, slowness, angularFreq] calculates the reflection response matrix RR of a sequence of pre-initiated layers labelled {i,j,...} with thicknesses {di, dj, ...} where the first and last layers are halfspaces and the first and last sequence is ignored.";
 tlResponse::usage="tlResponse[{i,j, ...},{di, dj, ...}, slowness, angularFreq,zs,zb] calculates the stress-displacement vector for a stack of layers bounded by two half-spaces. source and receiver are located in the top half-space: source depth: zs, receiver depth: 0, first boundary: zb. the vetor returned is in frequency-slowness domain: {Uz, Srz, Szz, Ur}";
@@ -20,7 +20,7 @@ tlDHTR::usage="tlDHTR[u,\[Nu],r,rmax,\[Omega],BesselVector] returns HT of order 
 tlPlotSeismic::usage="[label,field(\[Omega]-x),\[Omega],offsets,ampl,\[Omega]I,model,dlist,{z_source,z_boundary},output_file:0,fRicker:25,maxt,traveltime or a coded event (1P2PSPS2P) ]";
 tlPlotDiff::usage="[delta_,offsets_,t_,ampl_,pr_]";
 tlPlotTrace::usage="[u_,\[Omega]_,\[Omega]I_,fRicker_:25]";
-tlTravelTimes::usage="tlTravelTimes[{i,j, ...},{di, dj, ...}, slowness, zs: source depth, zb: depth of the first boundary] for a given slowness returns pairs of offset-traveltime {xi, t(xi)} of all the primary relfections of reflected and converted waves arranged as { {PP, SS, PS, SP}, {Direct} }. Direct wave traveltimes are for P and S modes.";
+tlTravelTimes::usage="tlTravelTimes[{i,j, ...},{di, dj, ...}, slowness, zs: source depth, zb: depth of the first boundary, mode code (e.g., 1P2SPS3SP2P1P] for a given slowness returns pairs of offset-traveltime {xi, t(xi)} of all the primary relfections of reflected and converted waves arranged as { {PP, SS, PS, SP}, {Direct} }. Direct wave traveltimes are for P and S modes.";
 tlVisualiseModel::usage="tlVisualiseModel[{i,j, ...},{di, dj, ...}, nSamples] outputs a graphics object visualising different layers with different colours in the time domain.";(*experimental function. Aiming to display layered model with colours for different layers*)
 (* Error Reporting tlSetLayer *)
 tlSetLayer::nonum="Expecting an array of 4 complex and 1 real numeric quantities in arg `2`";
@@ -122,16 +122,50 @@ c44=0.I+vs0^2 \[Rho];
 
 
 (* ::Input::Initialization:: *)
+SetAttributes[tlQLmatricesOld,Listable];
+tlQLmatricesOld[index_Integer,p_,\[Omega]_:1]/;ListQ[tlLayer[index]]:=
+Block[{c, d},
+{c[11],c[13],c[33],c[44],d}=tlLayer[index];
+Module[{L1,L2,d1,d2,d3,d4,d5,q\[Alpha],q\[Beta],\[Alpha]0,\[Beta]0,\[Eta],\[Delta],\[Sigma]0,S\[Alpha],S\[Beta],R,R1,R2,req1,req2,imq1,imq2},\[Alpha]0=Sqrt[c[33]/d];
+\[Beta]0=Sqrt[c[44]/d];
+\[Sigma]0=1-c[44]/c[33];
+\[Delta]=(c[13]-c[33]+2c[44])/c[33];
+\[Eta]=(c[11] c[33]-(c[13]+2c[44])^2)/(2c[33]^2);
+R1=2(1-p^2 \[Beta]0^2)(\[Delta]+2p^2 \[Alpha]0^2 \[Eta])^2;
+R2=\[Sigma]0+2p^2 \[Beta]0^2 \[Delta]-2p^2 \[Alpha]0^2 (1-2p^2 \[Beta]0^2)\[Eta];
+R=R1/(R2+Sqrt[R2^2+2p^2 \[Beta]0^2 R1]);
+S\[Alpha]=2\[Delta]+2p^2 \[Alpha]0^2 \[Eta]+R//Chop;
+S\[Beta]=2(1-p^2 \[Beta]0^2) \[Alpha]0^2/\[Beta]0^2 \[Eta]-R//Chop;
+req1=Re[1/\[Alpha]0^2-p^2-p^2 S\[Alpha]];
+req2=Re[1/\[Beta]0^2-p^2-p^2 S\[Beta]];
+imq1=Im[1/\[Alpha]0^2-p^2-p^2 S\[Alpha]];
+imq2=Im[1/\[Beta]0^2-p^2-p^2 S\[Beta]];
+imq1=Sign[imq1]imq1;
+imq2=Sign[imq2]imq2;
+q\[Alpha]=Sqrt[req1+I imq1]//Chop;
+q\[Beta]=Sqrt[req2+I imq2]//Chop;
+d2=Sqrt[(\[Sigma]0+\[Delta])/(\[Sigma]0+S\[Alpha])];
+d3=2\[Beta]0^2 (\[Sigma]0+1/2 (S\[Alpha]+\[Delta]))/(\[Sigma]0+\[Delta]);
+d4=Sqrt[(\[Sigma]0-p^2 \[Beta]0^2 (\[Sigma]0+S\[Beta]))/((1-p^2 \[Beta]0^2 (1+S\[Beta]))(\[Sigma]0+\[Delta]))];
+d5=(\[Sigma]0-2p^2 \[Beta]0^2 (\[Sigma]0+1/2 (S\[Beta]+\[Delta])))/(\[Sigma]0+\[Delta]);
+d1=1/Sqrt[p^2 d3+d5];
+L1=d1{{d2 Sqrt[q\[Alpha]/d],1/d4 p/Sqrt[d q\[Beta]]},{d3 d2 p Sqrt[d q\[Alpha]],-d5/d4 Sqrt[d/q\[Beta]]}}//Chop;
+L2=d1{{d5/d2 Sqrt[d/q\[Alpha]],d3 d4 p Sqrt[d q\[Beta]]},{1/d2 p/Sqrt[d q\[Alpha]],-d4 Sqrt[q\[Beta]/d]}}//Chop;
+Developer`ToPackedArray/@{{q\[Alpha],q\[Beta]},L1,L2}]
+];
+tlQLmatricesOld[index_Integer,p_]:=(Message[tlQLmatricesOld::nodef,index];
+$Failed);
+tlQLmatricesOld[index_,p_]:=(Message[tlQLmatricesOld::noint,index];
+$Failed);
+
+
+(* ::Input::Initialization:: *)
 SetAttributes[tlQLmatrices,Listable];
-tlQLmatrices[index_Integer,p_,\[Omega]_:1]/;ListQ[tlLayer[index]]:=
+tlQLmatrices[index_Integer,p_,\[Omega]_]/;ListQ[tlLayer[index]]:=
 Block[{c, d},
 {c[11],c[13],c[33],c[44],d}=tlLayer[index];
 Module[
-{sgn,imsign,sqrt4,L1,L2,d1,d2,d3,d4,d5,q\[Alpha],q\[Beta],\[Alpha]0,\[Beta]0,\[Eta],\[Delta],\[Sigma]0,S\[Alpha],S\[Beta],R,R1,R2,req1,req2,imq1,imq2,ds,q\[Alpha]s,q\[Beta]s,q\[Alpha]2,q\[Beta]2},
-sgn=2(UnitStep[#]-1/2)&;
-
-imsign=Re@#1+I #2 Block[{im=Im@#1},Sign[im]im]&;
-sqrt4=Block[{q=#^(1/4)},Re@q+I Im@q]&;
+{L1,L2,d1,d2,d3,d4,d5,q\[Alpha],q\[Beta],\[Alpha]0,\[Beta]0,\[Eta],\[Delta],\[Sigma]0,S\[Alpha],S\[Beta],R,R1,R2,ds,q\[Alpha]s,q\[Beta]s,q\[Alpha]2,q\[Beta]2,Q},
 
 \[Alpha]0=Sqrt[c[33]/d];
 \[Beta]0=Sqrt[c[44]/d];
@@ -147,8 +181,27 @@ S\[Beta]=2(1-p^2 \[Beta]0^2) \[Alpha]0^2/\[Beta]0^2 \[Eta]-R;
 q\[Alpha]2=1/\[Alpha]0^2-p^2-p^2 S\[Alpha];
 q\[Beta]2=1/\[Beta]0^2-p^2-p^2 S\[Beta];
 
-q\[Alpha]=imsign[Sqrt[q\[Alpha]2],1];
-q\[Beta]=imsign[Sqrt[q\[Beta]2],1];
+Q[q2_]:=Module[{a,b,sqrt,tol=10^-15},
+{a,b}=ReIm[q2];
+sqrt=Abs[q2];
+Which[
+Abs[a]>tol,
+{
+Sqrt[sqrt+a]+I Sign[\[Omega]]Sqrt[sqrt-a],
+Sqrt[Sqrt[sqrt]+Sqrt[(sqrt+a)/2.]]+I Sign[\[Omega]]Sqrt[Sqrt[sqrt]-Sqrt[(sqrt+a)/2.]]
+}/Sqrt[2.],
+Abs[a]<=tol,
+{
+Sqrt[Abs@b](1+I Sign[\[Omega]]),
+Sqrt[Sqrt[Abs@b/2]](Sqrt[Sqrt[2.]+1]+I Sign[\[Omega]]Sqrt[Sqrt[2.]-1])
+}/Sqrt[2.]
+]
+];
+
+
+{q\[Alpha],q\[Alpha]s}=Q[q\[Alpha]2];
+{q\[Beta],q\[Beta]s}=Q[q\[Beta]2];
+
 
 d2=Sqrt[(\[Sigma]0+\[Delta])/(\[Sigma]0+S\[Alpha])];
 d3=2\[Beta]0^2 (\[Sigma]0+1/2 (S\[Alpha]+\[Delta]))/(\[Sigma]0+\[Delta]);
@@ -156,9 +209,6 @@ d4=Sqrt[(\[Sigma]0-p^2 \[Beta]0^2 (\[Sigma]0+S\[Beta]))/((1-p^2 \[Beta]0^2 (1+S\
 d5=(\[Sigma]0-2p^2 \[Beta]0^2 (\[Sigma]0+1/2 (S\[Beta]+\[Delta])))/(\[Sigma]0+\[Delta]);
 d1=1/Sqrt[p^2 d3+d5];
 ds=Sqrt[d];
-
-{q\[Alpha]s,q\[Beta]s}={sqrt4[q\[Alpha]2],sqrt4[q\[Beta]2]};
-
 
 L1=d1{
 {d2 q\[Alpha]s/ds,1/d4 p/ds/q\[Beta]s},
@@ -177,76 +227,6 @@ $Failed);
 tlQLmatrices[index_,p_]:=(Message[tlQLmatrices::noint,index];
 $Failed);
 
-
-(* ::Input::Initialization:: *)
-(*
-<<<<<<<<<<<<<<<<<<< UNDER DEVELOPMENT >>>>>>>>>>>>>>>>>>>>>
-
-SetAttributes[tlQLmatricesRadicals,Listable];
-tlQLmatricesRadicals[index_Integer,p_,\[Omega]_:1]/;ListQ[tlLayer[index]]:=
-Block[{c, d},
-{c[11],c[13],c[33],c[44],d}=tlLayer[index];
-Module[
-{L1,L2,d1,d2,d3,d4,d5,q\[Alpha],q\[Beta],\[Alpha]0,\[Beta]0,\[Eta],\[Delta],\[Sigma]0,S\[Alpha],S\[Beta],R,R1,R2,req1,req2,imq1,imq2,ds,q\[Alpha]s,q\[Beta]s,q\[Alpha]2,q\[Beta]2,Q},
-
-\[Alpha]0=Sqrt[c[33]/d];
-\[Beta]0=Sqrt[c[44]/d];
-\[Sigma]0=1-c[44]/c[33];
-\[Delta]=(c[13]-c[33]+2c[44])/c[33];
-\[Eta]=(c[11] c[33]-(c[13]+2c[44])^2)/(2c[33]^2);
-R1=2(1-p^2 \[Beta]0^2)(\[Delta]+2p^2 \[Alpha]0^2 \[Eta])^2;
-R2=\[Sigma]0+2p^2 \[Beta]0^2 \[Delta]-2p^2 \[Alpha]0^2 (1-2p^2 \[Beta]0^2)\[Eta];
-R=R1/(R2+Sqrt[R2^2+2p^2 \[Beta]0^2 R1]);
-S\[Alpha]=2\[Delta]+2p^2 \[Alpha]0^2 \[Eta]+R;
-S\[Beta]=2(1-p^2 \[Beta]0^2) \[Alpha]0^2/\[Beta]0^2 \[Eta]-R;
-
-q\[Alpha]2=1/\[Alpha]0^2-p^2-p^2 S\[Alpha];
-q\[Beta]2=1/\[Beta]0^2-p^2-p^2 S\[Beta];
-
-Q[q2_,pc2_]:=Module[{a=Re@q2,b=Im@q2},
-Which[
-p^2<pc2,
-{Sqrt[Sqrt[a^2+b^2]+a]+I Sign[\[Omega]]Sqrt[Sqrt[a^2+b^2]-a],
-Sqrt[(a^2+b^2)^(1/4)+Sqrt[(Sqrt[a^2+b^2]+a)/2.]]+I Sign[\[Omega]]Sqrt[(a^2+b^2)^(1/4)-Sqrt[(Sqrt[a^2+b^2]+a)/2.]]}/Sqrt[2.],
-Abs[p^2-pc2]<=10^-15,
-{Sqrt[Abs@b](Sqrt[Sqrt[2.]+1]+I Sign[\[Omega]]Sqrt[Sqrt[2.]-1])
-}/Sqrt[2.],
-p^2>pc2,
-{Sqrt[Sqrt[a^2+b^2]-a]+I Sign[\[Omega]]Sqrt[Sqrt[a^2+b^2]+a],
-Sqrt[(a^2+b^2)^(1/4)+Sqrt[(Sqrt[a^2+b^2]-a)/2.]]+I Sign[\[Omega]]Sqrt[(a^2+b^2)^(1/4)-Sqrt[(Sqrt[a^2+b^2]-a)/2.]]}/Sqrt[2.]
-]
-];
-
-{q\[Alpha],q\[Alpha]s}=Q[#[[1]],#[[2]]]&/@{q\[Alpha]2,d/c[11]}
-
-
-{q\[Beta],q\[Beta]s}
-
-
-d2=Sqrt[(\[Sigma]0+\[Delta])/(\[Sigma]0+S\[Alpha])];
-d3=2\[Beta]0^2 (\[Sigma]0+1/2 (S\[Alpha]+\[Delta]))/(\[Sigma]0+\[Delta]);
-d4=Sqrt[(\[Sigma]0-p^2 \[Beta]0^2 (\[Sigma]0+S\[Beta]))/((1-p^2 \[Beta]0^2 (1+S\[Beta]))(\[Sigma]0+\[Delta]))];
-d5=(\[Sigma]0-2p^2 \[Beta]0^2 (\[Sigma]0+1/2 (S\[Beta]+\[Delta])))/(\[Sigma]0+\[Delta]);
-d1=1/Sqrt[p^2 d3+d5];
-ds=Sqrt[d];
-
-L1=d1{
-{d2 q\[Alpha]s/ds,1/d4 p/ds/q\[Beta]s},
-{d3 d2 p ds q\[Alpha]s,-d5/d4 ds/q\[Beta]s}
-};
-
-L2=d1{
-{d5/d2 ds/q\[Alpha]s,d3 d4 p ds q\[Beta]s},
-{1/d2 p/ds/q\[Alpha]s,-d4 q\[Beta]s/ds}
-};
-Developer`ToPackedArray/@{{q\[Alpha],q\[Beta]},L1,L2}
-]
-];
-tlQLmatricesRadicals[index_Integer,p_]:=(Message[tlQLmatricesRadicals::nodef,index];
-$Failed);
-tlQLmatricesRadicals[index_,p_]:=(Message[tlQLmatricesRadicals::noint,index];
-$Failed);
-*)
 
 
 (* ::Input::Initialization:: *)
@@ -350,16 +330,15 @@ If[Head@output==Symbol,Print["{data, t} written to "<>ToString[output]];output={
 reflTX=ampl Reverse[Re@reflTX/Max@Abs@reflTX,2]\[Transpose];
 
 mm=MinMax@reflTX;
-pcrit=Min@Re@Flatten[({#[[1]],#[[4]]}/#[[-1]])^(-1/2)&/@tlGetStiffness[DeleteDuplicates@model]];
+pcrit=Max@Re@Flatten[({#[[1]],#[[4]]}/#[[-1]])^(-1/2)&/@tlGetStiffness[DeleteDuplicates@model]];
 (*Print[mm];*)
 Module[{pr={0,tmax},TToptns,is=500,tt=tlTravelTimes[model,dlist,#,zs,zb,code]&,lbls={{"t, s",None},{None,"x, km"}},cfg=Blend[{Black,White},(#-mm[[1]])/2]&,cfrb=Blend[{Blue,White,Red},(#+1)/2]&,colors={Cyan,Black,Green,Orange,Magenta}},
+
 TToptns={PlotLabel->label,AspectRatio->1,Frame->True,FrameTicks->{{Range[0,Max@t,.5],None},{None,Range[0,Max@offsets,.25]}},ScalingFunctions->{Identity,"Reverse"},PlotRange->{MinMax@offsets,-pr},ImageSize->is,FrameTicksStyle->Opacity[0],FrameLabel->lbls,LabelStyle->Directive[Opacity[0],FontSize->20,Bold,Black],FrameStyle->Opacity[0]};
 
 Overlay[{
-ArrayPlot[reflTX,AspectRatio->1,Frame->True,FrameLabel->RotateRight@lbls,LabelStyle->Directive[FontSize->20,Bold,Black],DataReversed->{True,False},DataRange->{MinMax@(offsets),MinMax@t},FrameTicks->{{Range[0,Max@t,.5],None},{None,Range[0,Max@offsets,.25]}},PlotRange->{MinMax@(offsets),Max@t-Reverse@pr,Full},ImageSize->is,ColorFunction->cfrb,ColorFunctionScaling->False,PlotLabel->label,
+ArrayPlot[reflTX,AspectRatio->1,Frame->True,FrameLabel->RotateRight@lbls,LabelStyle->Directive[FontSize->20,Bold,Black],DataReversed->{True,False},DataRange->{MinMax@(offsets),MinMax@t},FrameTicks->{{Range[0,Max@t,.5],None},{None,Range[0,Max@offsets,.25]}},PlotRange->{MinMax@(offsets),{Max[t]-tmax,Max[t]},Full},ImageSize->is,ColorFunction->cfrb,ColorFunctionScaling->False,PlotLabel->label,
 PlotLegends->If[code==0,Placed[LineLegend[Directive[Thick,#]&/@colors,{"P, S","PP","SS","PS","SP"},LegendLayout->"Row"],Below],Placed[LineLegend[{Directive[Thick,Dashed]},{code},LegendLayout->"Row"],Below]]
-
-
 
 ],
 ParametricPlot[Evaluate@tt[p][[2]],{p,0,1},PlotStyle->Directive[Dashed,Opacity[0],First@colors],#]&@TToptns,
@@ -424,7 +403,7 @@ dq=Sqrt[\[Sigma]0^2+4 p^4 \[Alpha]0^2 \[Eta] (\[Alpha]0^2 \[Eta]+2 \[Beta]0^2 (\
 dqp2=Re[-((2 p (\[Alpha]0^2 \[Eta] (dq+2 p^2 \[Alpha]0^2 \[Eta]-\[Sigma]0)+\[Beta]0^2 (dq+dq \[Delta]+(\[Delta]+4 p^2 \[Alpha]0^2 \[Eta]) (\[Delta]+\[Sigma]0))))/(\[Beta]0^2 dq))];
 dqs2=Re[p (-4-4 \[Delta]-(4 \[Alpha]0^2 \[Eta])/\[Beta]0^2)-dqp2];
  
-Q=Re[tlQLmatrices[indexSet,p][[;;,1]]];
+Q=Re[tlQLmatricesOld[indexSet,p][[;;,1]]];
  
 dQ=Re[Transpose[{dqp2,dqs2}]/2/Q];
 Block[{z={zb}~Join~Rest@thicknessSet},
