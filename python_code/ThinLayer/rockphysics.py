@@ -40,6 +40,18 @@ class Rock:
         self.porosity = porosity
         self.mineral_density = mineral_density
         self.crack_density = crack_density
+        
+        
+class VTIRock:
+    def __init__(self, name, frame_lambda, frame_mu, porosity, mineral_density, crack_density = 0, fracture_density = 0, ratio = 100):
+        self.name = name
+        self.lam = frame_lambda
+        self.mu = frame_mu
+        self.porosity = porosity
+        self.mineral_density = mineral_density
+        self.crack_density = crack_density
+        self.fracture_density = fracture_density
+        self.ratio = ratio
 
 def GassmannModel(Kd, mu, Km, phi, Kf):
     return Kd + (1 - Kd/Km)**2/(phi/Kf - Kd/Km**2 + (1 - phi)/Km)
