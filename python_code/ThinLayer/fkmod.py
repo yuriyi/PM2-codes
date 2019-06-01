@@ -1,29 +1,25 @@
 import numpy as np
 from numpy.linalg import inv
-import hankel
-from hankel import HankelTransform
-import matplotlib.pyplot as plt
 import scipy.special as scs
+import time
 
 # progress tracker
-import time, sys
-from IPython.display import clear_output
-
-def update_progress(progress,msg=''):
-    bar_length = 20
-    if isinstance(progress, int):
-        progress = float(progress)
-    if not isinstance(progress, float):
-        progress = 0
-    if progress < 0:
-        progress = 0
-    if progress >= 1:
-        progress = 1
+# from IPython.display import clear_output
+# def update_progress(progress,msg=''):
+#     bar_length = 20
+#     if isinstance(progress, int):
+#         progress = float(progress)
+#     if not isinstance(progress, float):
+#         progress = 0
+#     if progress < 0:
+#         progress = 0
+#     if progress >= 1:
+#         progress = 1
             
-    block = int(round(bar_length * progress))
-    clear_output(wait = True)
-    text = msg+"Progress: [{0}] {1:.1f}%".format( "#" * block + "-" * (bar_length - block), progress * 100)
-    print(text)
+#     block = int(round(bar_length * progress))
+#     clear_output(wait = True)
+#     text = msg+"Progress: [{0}] {1:.1f}%".format( "#" * block + "-" * (bar_length - block), progress * 100)
+#     print(text)
 
     ## vertical slowness and transformation matrices
 def QLmatrices(layers_dict, layer, p):
@@ -56,7 +52,7 @@ def QLmatrices(layers_dict, layer, p):
     L2 = d1*np.array([[d5/d2*np.sqrt(d/qa), d3*d4*p*np.sqrt(d*qb)],
                       [1/d2*p/np.sqrt(d*qa), -d4*np.sqrt(qb/d)]
                      ], dtype = np.complex_)
-    return(np.array([np.diagflat([qa,qb]),L1,L2]))
+    return np.array([np.diagflat([qa,qb]),L1,L2])
 
 
 ## reflection and transmission coefficients for a single interface
@@ -75,7 +71,7 @@ def LayerReflectionTransmission(layers_dict, layer1, layer2, p):
     trans = 2*inv(C + D)
     refl = np.dot((C-D),trans/2)
     
-    return(np.array([trans,refl]))
+    return np.array([trans,refl])
 
 ## stack reflectivity
 def Reflectivity(layers_dict, layers, thicknesses, p, w):
@@ -103,7 +99,7 @@ def Reflectivity(layers_dict, layers, thicknesses, p, w):
             inv_mat = inv(np.identity(2, dtype=np.complex_) + np.dot(RT[n+1][1],rec(n+1)))
             inv_t = np.dot(np.transpose(RT[n+1][0]) , np.dot(rec(n+1) , np.dot(inv_mat , RT[n+1][0])))
             return(np.dot(np.dot(phase[n + 1],RT[n + 1][1] + inv_t),phase[n + 1]))
-    return(rec(-1))
+    return rec(-1)
 
 ## response due to a vertical source
 def ResponseVforce(model, p, w):
@@ -141,7 +137,7 @@ def ResponseVforce(model, p, w):
 
 ## critical horizontal slowness
 def getpmax(layers_dict,layers):
-    phor = [np.real(np.sqrt(layers_dict[x][4]/layers_dict[x][3])) for x in layers]
+    phor = [np.real(np.sqrt(layers_dict[x][4]/layers_dict[x][3])) for x in set(layers)]
     return max(phor)
 
 ## discrete Hankel transfrom
@@ -164,8 +160,8 @@ def ftot(tresp,omega,w0 = 25):
     return taxis, np.real(np.fft.fft(tracef))
 
 
-def FKmodeling(model, pI=0.01, msg=''):
-    
+def FKmodeling(model, pI=0.001):
+    # model['layers'] must be a function of requency
     # default values if not supplied
     try:
         omega = model['omega']
@@ -181,43 +177,59 @@ def FKmodeling(model, pI=0.01, msg=''):
         nslow = model['nslow']
     except:
         nslow = 1000
-    
-    # get critical slowness (integration limit)
-    pmax = 1.05*getpmax(model['layers'],model['model_layers'])
 
     # Zeroes of the Bessel function (components are 0: Z, 1: R )
     jzeros = np.array([scs.jn_zeros(0,nslow), scs.jn_zeros(1,nslow)])
 
-    # functions to transform (u[0] - Z, u[1] - R)
-    u = lambda k,w: ResponseVforce(model,k/w - pI*1j,w)
-
-    # transfrom Z component
+    ## transfrom Z component
     tresp = []
     
     start = time.time()
-
-    # for i, w in enumerate(omega):
-    #     inp = [u(k,w)[0] for k in jzeros[0]*pmax*w/jzeros[0,-1]]
-    #     rmax = jzeros[0,-1] /pmax /w
-    #     tranf = DHTR(inp, 0, r, rmax, jzeros[0])
-    #     tresp.append(tranf)
-        
-    #     update_progress(i / len(omega),msg)
-        
-    for w in omega:
-        inp = [u(k,w)[0] for k in jzeros[0]*pmax*w/jzeros[0,-1]]
-        rmax = jzeros[0,-1] /pmax /w
-        tranf = DHTR(inp, 0, r, rmax, jzeros[0])
-        tresp.append(tranf)
+    # check if any of the layers have frequency-dependent stiffnesses
+    if any(key in model['layersF'] for key in set(model['model_layers'])):
+        print('frequency dependence')
+        common_keys = set(model['model_layers']).intersection(set(model['layersF']))
+        for w in omega:
+            # calculate stiffness parameters of a layer for each frequency
+            for layer in common_keys:
+                model['layers'][layer] = model['layersF'][layer](w)
+            # get critical slowness (integration limit)
+            pmax = 1.05*getpmax(model['layers'],model['model_layers'])
+            # functions to transform (u[0] - Z, u[1] - R)
+            u = lambda k,w: ResponseVforce(model,k/w + pI*1j,w)[0]
+            # calculate the integrant at integration points
+            inp = [u(k,w) for k in jzeros[0]*pmax*w/jzeros[0,-1]]
+            # get maximum radius 
+            rmax = jzeros[0,-1] /pmax /w
+            # compute hankel transform
+            tranf = DHTR(inp, 0, r, rmax, jzeros[0])
+            tresp.append(tranf)
+        for key in common_keys:
+            model['layers'].pop(key)
+    else:
+        print('NO frequency dependence')
+        pI=0.01
+        # get critical slowness (integration limit)
+        pmax = 1.05*getpmax(model['layers'],model['model_layers'])
+        # functions to transform (u[0] - Z, u[1] - R)
+        u = lambda k,w: ResponseVforce(model,k/w + pI*1j,w)[0]
+        for w in omega:
+            # calculate the integrant at integration points
+            inp = [u(k,w) for k in jzeros[0]*pmax*w/jzeros[0,-1]]
+            # get maximum radius 
+            rmax = jzeros[0,-1] /pmax /w
+            # compute hankel transform
+            tranf = DHTR(inp, 0, r, rmax, jzeros[0])
+            tresp.append(tranf)
 
     tresp = np.array(tresp).T
 
     end = time.time()
     elapsed = end - start
 
-    return tresp, omega, r, elapsed
+    return tresp, elapsed
 
-def FKmodeling_par(DV, model, pI=0.01):
+def FKmodeling_par(DV, model, pI=0.001):
     
     # default values if not supplied
     try:
@@ -235,29 +247,46 @@ def FKmodeling_par(DV, model, pI=0.01):
     except:
         nslow = 1000
     
-    # get critical slowness (integration limit)
-    pmax = 1.05*getpmax(model['layers'],model['model_layers'])
-
     # Zeroes of the Bessel function (components are 0: Z, 1: R )
     jzeros = np.array([scs.jn_zeros(0,nslow), scs.jn_zeros(1,nslow)])
 
-    # functions to transform (u[0] - Z, u[1] - R)
-    u = lambda k,w: ResponseVforce(model,k/w - pI*1j,w)[0]
-
-    # transfrom Z component
-    DV.use_cloudpickle()
-
-    def resp_calc(w):
-        inp = [u(k,w) for k in jzeros[0]*pmax*w/jzeros[0,-1]]
-        rmax = jzeros[0,-1] /pmax /w
-        return DHTR(inp, 0, r, rmax, jzeros[0])
-    
     start = time.time()
-
-    tresp = DV.map_sync(resp_calc,omega)
-    tresp = np.array(tresp).T
     
+    # check if any of the layers have frequency-dependent stiffnesses
+    if any(key in model['layersF'] for key in set(model['model_layers'])):
+        print('frequency dependence')
+        common_keys = set(model['model_layers']).intersection(set(model['layersF']))
+        def resp_calc(w):
+            for layer in common_keys:
+                model['layers'][layer] = model['layersF'][layer](w)
+            pmax = 1.05*getpmax(model['layers'],model['model_layers'])
+            u = lambda k,w: ResponseVforce(model,k/w + pI*1j,w)[0]
+            inp = [u(k,w) for k in jzeros[0]*pmax*w/jzeros[0,-1]]
+            rmax = jzeros[0,-1] /pmax /w
+            return DHTR(inp, 0, r, rmax, jzeros[0])
+        
+        DV.use_cloudpickle()
+        tresp = DV.map_sync(resp_calc,omega)
+        tresp = np.array(tresp).T
+
+    else:
+        print('NO frequency dependence')
+        pI=0.01
+        # get critical slowness (integration limit)
+        pmax = 1.05*getpmax(model['layers'],model['model_layers'])
+        # functions to transform (u[0] - Z, u[1] - R)
+        u = lambda k,w: ResponseVforce(model,k/w + pI*1j,w)[0]
+        
+        def resp_calc(w):
+            inp = [u(k,w) for k in jzeros[0]*pmax*w/jzeros[0,-1]]
+            rmax = jzeros[0,-1] /pmax /w
+            return DHTR(inp, 0, r, rmax, jzeros[0])
+        
+        DV.use_cloudpickle()
+        tresp = DV.map_sync(resp_calc,omega)
+        tresp = np.array(tresp).T
+
     end = time.time()
     elapsed = end - start
 
-    return tresp, omega, r, elapsed
+    return tresp, elapsed

@@ -142,7 +142,8 @@ def AnisSquirtModel(lam, m, f, Kf, ee, eef, aspectRatio, tau, w, ratio):
         fc*((-16*m*(1 - nu))/(15.*aspectRatio*(2 - nu)*np.pi) - \
             G2*(3*k + (3*k**2)/sc) - G1*(k + L4/sc) - G3*(lam + m + (k*(lam + m))/sc) + L4/sc) - \
         ff*(-3*F1*k*(1 + (lam + m)/sc) - F2*(lam + m + (lam*(lam + 2*m))/sc) + (lam*(lam + 2*m))/sc)
-    return [c11, c13, c33, c44, c12]
+        
+    return np.conj([c11, c13, c33, c44, c12])
 
 def AnisHTIVelocities(c11, c33, c44, c12, c13, rho, theta):
     H = 4*(c13 + c44)**2*np.cos(theta)**2*np.sin(theta)**2 + (-((c33 - c44)*np.cos(theta)**2) + (c11 - c44)*np.sin(theta)**2)**2
