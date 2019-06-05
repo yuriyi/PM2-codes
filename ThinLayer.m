@@ -11,7 +11,6 @@ tlGetStiffness::usage="tlGetStiffness[layerIndex] outputs a vector of cijs for a
 tlCijFromThomsen::usage="tlCijFromThomsen[vp0,vs0,\[Epsilon],\[Delta],\[Rho]] outputs {c11, c13, c33, c44, \[Rho]} for a set of Thomsen parameters.";
 tlVTISquirtModuli::usage="tlVTISquirtModuli[\[Epsilon],\[Epsilon]f,\[Alpha],\[Tau]0, \[Omega], lenrat][\[Lambda],\[Mu], \[Phi], Kf] returns {c11, c13, c33, c44} for a given frequency.";
 tlQLmatrices::usage="tlQmatices[i, p, \[Omega]:0] returns the numbers qa, qb and linear transformations L1, L2 decomposing the wave field of horizontal slowness p, in a layer with index i. The output is in the form {{qa, qb}, L1, L2}";
-tlQLmatricesOld::usage="[index_Integer,p_,\[Omega]_:1]";
 tlLayerReflectionTransmission::usage="tlLayerReflectionTransmission[i, j, p] calculates transmission T and reflection R matrices for an interface between pre-defined layers i and j for horizontal slowness p. It can also be called as tlLayerReflectionTransmission[i, p] in which case an interface between layers i, i+1 is assumed. The output is of the form {T, R}."; 
 tlReflectivity::usage="tlReflectivity[{i,j, ...},{di, dj, ...}, slowness, angularFreq] calculates the reflection response matrix RR of a sequence of pre-initiated layers labelled {i,j,...} with thicknesses {di, dj, ...} where the first and last layers are halfspaces and the first and last sequence is ignored.";
 tlResponse::usage="tlResponse[{i,j, ...},{di, dj, ...}, slowness, angularFreq,zs,zb] calculates the stress-displacement vector for a stack of layers bounded by two half-spaces. source and receiver are located in the top half-space: source depth: zs, receiver depth: 0, first boundary: zb. the vetor returned is in frequency-slowness domain: {Uz, Srz, Szz, Ur}";
@@ -106,7 +105,7 @@ c[13]=\[Lambda]
 -\[Phi]p(3/(4\[Mu]) (1-\[Nu])/(1+\[Nu]) (3\[Lambda]^2+4\[Lambda] \[Mu]-(4(1+5\[Nu]))/(7-5\[Nu]) \[Mu]^2)-(1+(3k)/(4\[Mu]))(3k D1+(\[Lambda]+\[Mu]) D2))
 -\[Phi]f((\[Lambda](\[Lambda]+2\[Mu]))/\[Sigma]c-3k((\[Lambda]+\[Mu])/\[Sigma]c+1)F1-((\[Lambda](\[Lambda]+2\[Mu]))/\[Sigma]c+\[Lambda]+\[Mu])F2);
 c[66]=(c[11]-c[12])/2;
-{c[11],c[13],c[33],c[44],\[Rho]}//N
+Conjugate[{c[11],c[13],c[33],c[44],\[Rho]}]//N
 ]
 
 
@@ -122,8 +121,8 @@ c44=0.I+vs0^2 \[Rho];
 
 
 (* ::Input::Initialization:: *)
-SetAttributes[tlQLmatricesOld,Listable];
-tlQLmatricesOld[index_Integer,p_,\[Omega]_:1]/;ListQ[tlLayer[index]]:=
+SetAttributes[tlQLmatrices,Listable];
+tlQLmatrices[index_Integer,p_,\[Omega]_:1]/;ListQ[tlLayer[index]]:=
 Block[{c, d},
 {c[11],c[13],c[33],c[44],d}=tlLayer[index];
 Module[{L1,L2,d1,d2,d3,d4,d5,q\[Alpha],q\[Beta],\[Alpha]0,\[Beta]0,\[Eta],\[Delta],\[Sigma]0,S\[Alpha],S\[Beta],R,R1,R2,req1,req2,imq1,imq2},\[Alpha]0=Sqrt[c[33]/d];
@@ -153,80 +152,10 @@ L1=d1{{d2 Sqrt[q\[Alpha]/d],1/d4 p/Sqrt[d q\[Beta]]},{d3 d2 p Sqrt[d q\[Alpha]],
 L2=d1{{d5/d2 Sqrt[d/q\[Alpha]],d3 d4 p Sqrt[d q\[Beta]]},{1/d2 p/Sqrt[d q\[Alpha]],-d4 Sqrt[q\[Beta]/d]}}//Chop;
 Developer`ToPackedArray/@{{q\[Alpha],q\[Beta]},L1,L2}]
 ];
-tlQLmatricesOld[index_Integer,p_]:=(Message[tlQLmatricesOld::nodef,index];
-$Failed);
-tlQLmatricesOld[index_,p_]:=(Message[tlQLmatricesOld::noint,index];
-$Failed);
-
-
-(* ::Input::Initialization:: *)
-SetAttributes[tlQLmatrices,Listable];
-tlQLmatrices[index_Integer,p_,\[Omega]_]/;ListQ[tlLayer[index]]:=
-Block[{c, d},
-{c[11],c[13],c[33],c[44],d}=tlLayer[index];
-Module[
-{L1,L2,d1,d2,d3,d4,d5,q\[Alpha],q\[Beta],\[Alpha]0,\[Beta]0,\[Eta],\[Delta],\[Sigma]0,S\[Alpha],S\[Beta],R,R1,R2,ds,q\[Alpha]s,q\[Beta]s,q\[Alpha]2,q\[Beta]2,Q},
-
-\[Alpha]0=Sqrt[c[33]/d];
-\[Beta]0=Sqrt[c[44]/d];
-\[Sigma]0=1-c[44]/c[33];
-\[Delta]=(c[13]-c[33]+2c[44])/c[33];
-\[Eta]=(c[11] c[33]-(c[13]+2c[44])^2)/(2c[33]^2);
-R1=2(1-p^2 \[Beta]0^2)(\[Delta]+2p^2 \[Alpha]0^2 \[Eta])^2;
-R2=\[Sigma]0+2p^2 \[Beta]0^2 \[Delta]-2p^2 \[Alpha]0^2 (1-2p^2 \[Beta]0^2)\[Eta];
-R=R1/(R2+Sqrt[R2^2+2p^2 \[Beta]0^2 R1]);
-S\[Alpha]=2\[Delta]+2p^2 \[Alpha]0^2 \[Eta]+R;
-S\[Beta]=2(1-p^2 \[Beta]0^2) \[Alpha]0^2/\[Beta]0^2 \[Eta]-R;
-
-q\[Alpha]2=1/\[Alpha]0^2-p^2-p^2 S\[Alpha];
-q\[Beta]2=1/\[Beta]0^2-p^2-p^2 S\[Beta];
-
-Q[q2_]:=Module[{a,b,sqrt,tol=10^-15},
-{a,b}=ReIm[q2];
-sqrt=Abs[q2];
-Which[
-Abs[a]>tol,
-{
-Sqrt[sqrt+a]+I Sign[\[Omega]]Sqrt[sqrt-a],
-Sqrt[Sqrt[sqrt]+Sqrt[(sqrt+a)/2.]]+I Sign[\[Omega]]Sqrt[Sqrt[sqrt]-Sqrt[(sqrt+a)/2.]]
-}/Sqrt[2.],
-Abs[a]<=tol,
-{
-Sqrt[Abs@b](1+I Sign[\[Omega]]),
-Sqrt[Sqrt[Abs@b/2]](Sqrt[Sqrt[2.]+1]+I Sign[\[Omega]]Sqrt[Sqrt[2.]-1])
-}/Sqrt[2.]
-]
-];
-
-
-{q\[Alpha],q\[Alpha]s}=Q[q\[Alpha]2];
-{q\[Beta],q\[Beta]s}=Q[q\[Beta]2];
-
-
-d2=Sqrt[(\[Sigma]0+\[Delta])/(\[Sigma]0+S\[Alpha])];
-d3=2\[Beta]0^2 (\[Sigma]0+1/2 (S\[Alpha]+\[Delta]))/(\[Sigma]0+\[Delta]);
-d4=Sqrt[(\[Sigma]0-p^2 \[Beta]0^2 (\[Sigma]0+S\[Beta]))/((1-p^2 \[Beta]0^2 (1+S\[Beta]))(\[Sigma]0+\[Delta]))];
-d5=(\[Sigma]0-2p^2 \[Beta]0^2 (\[Sigma]0+1/2 (S\[Beta]+\[Delta])))/(\[Sigma]0+\[Delta]);
-d1=1/Sqrt[p^2 d3+d5];
-ds=Sqrt[d];
-
-L1=d1{
-{d2 q\[Alpha]s/ds,1/d4 p/ds/q\[Beta]s},
-{d3 d2 p ds q\[Alpha]s,-d5/d4 ds/q\[Beta]s}
-};
-
-L2=d1{
-{d5/d2 ds/q\[Alpha]s,d3 d4 p ds q\[Beta]s},
-{1/d2 p/ds/q\[Alpha]s,-d4 q\[Beta]s/ds}
-};
-Developer`ToPackedArray/@{{q\[Alpha],q\[Beta]},L1,L2}
-]
-];
 tlQLmatrices[index_Integer,p_]:=(Message[tlQLmatrices::nodef,index];
 $Failed);
 tlQLmatrices[index_,p_]:=(Message[tlQLmatrices::noint,index];
 $Failed);
-
 
 
 (* ::Input::Initialization:: *)
@@ -403,7 +332,7 @@ dq=Sqrt[\[Sigma]0^2+4 p^4 \[Alpha]0^2 \[Eta] (\[Alpha]0^2 \[Eta]+2 \[Beta]0^2 (\
 dqp2=Re[-((2 p (\[Alpha]0^2 \[Eta] (dq+2 p^2 \[Alpha]0^2 \[Eta]-\[Sigma]0)+\[Beta]0^2 (dq+dq \[Delta]+(\[Delta]+4 p^2 \[Alpha]0^2 \[Eta]) (\[Delta]+\[Sigma]0))))/(\[Beta]0^2 dq))];
 dqs2=Re[p (-4-4 \[Delta]-(4 \[Alpha]0^2 \[Eta])/\[Beta]0^2)-dqp2];
  
-Q=Re[tlQLmatricesOld[indexSet,p][[;;,1]]];
+Q=Re[tlQLmatrices[indexSet,p][[;;,1]]];
  
 dQ=Re[Transpose[{dqp2,dqs2}]/2/Q];
 Block[{z={zb}~Join~Rest@thicknessSet},
