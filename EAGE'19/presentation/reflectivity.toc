@@ -1,0 +1,5 @@
+\beamer@sectionintoc {1}{Introduction}{3}{0}{1}
+\beamer@sectionintoc {2}{Reflectivity modeling}{11}{0}{2}
+\beamer@sectionintoc {3}{Rock-physics model}{22}{0}{3}
+\beamer@sectionintoc {4}{Modelling}{40}{0}{4}
+\beamer@sectionintoc {5}{Discussion \& Conclusions}{65}{0}{5}
