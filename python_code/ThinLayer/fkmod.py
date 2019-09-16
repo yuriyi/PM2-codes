@@ -91,15 +91,19 @@ def Reflectivity(layers_dict, layers, thicknesses, p, w):
     # Phase propagator for layer stack
     phase = [np.diagflat(np.exp(1j*w*i[0]*np.diag(i[1]))) for i in zip(thicknesses,[item[0] for item in QL])]
     
-    # Recursive calculation of reflection response
+    # Recursive calculation of reflection response.
+    # Memoization makes a huge difference
+    memo_rec = {};
     def rec(n):
         if n == n_of_layers-1:
             return(np.zeros(shape=(2,2), dtype=np.complex_))
         else:
-            inv_mat = inv(np.identity(2, dtype=np.complex_) + np.dot(RT[n+1][1],rec(n+1)))
-            inv_t = np.dot(np.transpose(RT[n+1][0]) , np.dot(rec(n+1) , np.dot(inv_mat , RT[n+1][0])))
-            return(np.dot(np.dot(phase[n + 1],RT[n + 1][1] + inv_t),phase[n + 1]))
-    return rec(-1)
+            if n not in memo_rec:
+                inv_mat = inv(np.identity(2, dtype=np.complex_) + np.dot(RT[n+1][1],rec(n+1)))
+                inv_t = np.dot(np.transpose(RT[n+1][0]) , np.dot(rec(n+1) , np.dot(inv_mat , RT[n+1][0])))
+                memo_rec[n]=np.dot(np.dot(phase[n + 1],RT[n + 1][1] + inv_t),phase[n + 1])
+            return(memo_rec[n])
+    return rec(0)
 
 ## response due to a vertical source
 def ResponseVforce(model, p, w):
