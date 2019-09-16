@@ -6,21 +6,25 @@ BeginPackage["ThinLayer`"]
 
 (* ::Input::Initialization:: *)
 (* Usage Messaging *)
-tlSetLayer::usage="tlSetLayer[layerIndex, {c11, c13, c33, c44, \[Rho]}] creates a 'tlLayer[layerIndex]' object instance with assigned numerical values for cijs.";
-tlGetStiffness::usage="tlGetStiffness[layerIndex] outputs a vector of cijs for a given layer.";
+tlSetLayer::usage="tlSetLayer[layerIndex, {c11, c13, c33, c44, \[Rho]}] creates a 'tlLayer[layerIndex]' object instance with assigned numerical values for cijs. and the density";
+tlGetStiffness::usage="tlGetStiffness[layerIndex] outputs a vector of cijs and the density for a given layer. {c11, c13, c33, c44, \[Rho]}";
 tlCijFromThomsen::usage="tlCijFromThomsen[vp0,vs0,\[Epsilon],\[Delta],\[Rho]] outputs {c11, c13, c33, c44, \[Rho]} for a set of Thomsen parameters.";
 tlVTISquirtModuli::usage="tlVTISquirtModuli[\[Epsilon],\[Epsilon]f,\[Alpha],\[Tau]0, \[Omega], lenrat][\[Lambda],\[Mu], \[Phi], Kf] returns {c11, c13, c33, c44} for a given frequency.";
 tlQLmatrices::usage="tlQmatices[i, p, \[Omega]:0] returns the numbers qa, qb and linear transformations L1, L2 decomposing the wave field of horizontal slowness p, in a layer with index i. The output is in the form {{qa, qb}, L1, L2}";
 tlLayerReflectionTransmission::usage="tlLayerReflectionTransmission[i, j, p] calculates transmission T and reflection R matrices for an interface between pre-defined layers i and j for horizontal slowness p. It can also be called as tlLayerReflectionTransmission[i, p] in which case an interface between layers i, i+1 is assumed. The output is of the form {T, R}."; 
 tlReflectivity::usage="tlReflectivity[{i,j, ...},{di, dj, ...}, slowness, angularFreq] calculates the reflection response matrix RR of a sequence of pre-initiated layers labelled {i,j,...} with thicknesses {di, dj, ...} where the first and last layers are halfspaces and the first and last sequence is ignored.";
 tlResponse::usage="tlResponse[{i,j, ...},{di, dj, ...}, slowness, angularFreq,zs,zb] calculates the stress-displacement vector for a stack of layers bounded by two half-spaces. source and receiver are located in the top half-space: source depth: zs, receiver depth: 0, first boundary: zb. the vetor returned is in frequency-slowness domain: {Uz, Srz, Szz, Ur}";
-tlResponseVforce::usage="tlResponseVforce[{i,j, ...},{di, dj, ...}, slowness, angularFreq,zs,zb] calculates the stress-displacement vector for a stack of layers bounded by two half-spaces. source and receiver are located in the top half-space: source depth: zs, receiver depth: 0, first boundary: zb. the vetor returned is in frequency-slowness domain: {Uz, Srz, Szz, Ur}. Source type - vertical force";
-tlDHTR::usage="tlDHTR[u,\[Nu],r,rmax,\[Omega],BesselVector] returns HT of order \[Nu] of function u[p] at radius r for given frequency \[Omega]. BesselVector is the vector of zeroes of the Bessel funciton, rmax is the maximum radius after which the function is assumed 0. check the definition to see apply apodizing windows";
-tlPlotSeismic::usage="[label,field(\[Omega]-x),\[Omega],offsets,ampl,\[Omega]I,model,dlist,{z_source,z_boundary},output_file:0,fRicker:25,maxt,traveltime or a coded event (1P2PSPS2P) ]";
-tlPlotDiff::usage="[delta_,offsets_,t_,ampl_,pr_]";
-tlPlotTrace::usage="[u_,\[Omega]_,\[Omega]I_,fRicker_:25]";
+tlResponseVforce::usage="tlResponseVforce[{i,j, ...},{di, dj, ...}, slowness, angularFreq,zs,zb] calculates the stress-displacement vector for a stack of layers bounded by two half-spaces. source and receiver are located in the top half-space: source depth: zs, receiver depth: 0, first boundary: zb. the vetor returned is in frequency-slowness domain: {Uz, Srz, Szz, Ur}. Source type - vertical force. Direct wave is nt calculated";
+tlDHTR::usage="tlDHTR[u,\[Nu],r,rmax,\[Omega],BesselVector] returns HT of order \[Nu] of function u[p] at radius r for given frequency \[Omega]. BesselVector is the vector of zeroes of the Bessel funciton, rmax is the maximum radius after which the function is assumed 0";
+
+tlPlotSeismic::usage="tlPlotSeismic[label,field(\[Omega]-x),frequencies,offsets,amplification, \[Omega]I, model, dlist, {zs,zb}, output_variable:0, source frequency:25, maxt, traveltime of a coded event (1P2PSPS2P) ] displays seismic and writes the t-x shot gather to the output_variable. ";
+tlPlotDiff::usage="tlPlotDiff[delta field (t-x), offsets, time vector, amplification, exponential gain, AspectRatio]";
+tlPlotTrace::usage="tlPlotTrace[field(\[Omega]), frequencies, \[Omega]I, color, source frequency:25, t-limits, ImageSize, label] plots a single trace ";
 tlTravelTimes::usage="tlTravelTimes[{i,j, ...},{di, dj, ...}, slowness, zs: source depth, zb: depth of the first boundary, mode code (e.g., 1P2SPS3SP2P1P] for a given slowness returns pairs of offset-traveltime {xi, t(xi)} of all the primary relfections of reflected and converted waves arranged as { {PP, SS, PS, SP}, {Direct} }. Direct wave traveltimes are for P and S modes.";
-tlVisualiseModel::usage="tlVisualiseModel[{i,j, ...},{di, dj, ...}, nSamples] outputs a graphics object visualising different layers with different colours in the time domain.";(*experimental function. Aiming to display layered model with colours for different layers*)
+
+(*experimental function. Aiming to display layered model with colours for different layers*)
+tlVisualiseModel::usage="tlVisualiseModel[{i,j, ...},{di, dj, ...}, nSamples] outputs a graphics object visualising different layers with different colours in the time domain.";
+
 (* Error Reporting tlSetLayer *)
 tlSetLayer::nonum="Expecting an array of 4 complex and 1 real numeric quantities in arg `2`";
 tlSetLayer::noint="Argument `1` refers to layer label. Positive integer expected";
@@ -270,7 +274,7 @@ ArrayPlot[reflTX,AspectRatio->1,Frame->True,FrameLabel->RotateRight@lbls,LabelSt
 PlotLegends->If[code==0,Placed[LineLegend[Directive[Thick,#]&/@colors,{"P, S","PP","SS","PS","SP"},LegendLayout->"Row"],Below],Placed[LineLegend[{Directive[Thick,Dashed]},{code},LegendLayout->"Row"],Below]]
 
 ],
-ParametricPlot[Evaluate@tt[p][[2]],{p,0,1},PlotStyle->Directive[Dashed,Opacity[0],First@colors],#]&@TToptns,
+ParametricPlot[Evaluate@tt[p][[2]],{p,0,.99pcrit},PlotStyle->Directive[Dashed,Opacity[0],First@colors],#]&@TToptns,
 
 If[code==0,
 Sequence@@Table[
@@ -286,7 +290,7 @@ ParametricPlot[Evaluate@tt[p],{p,0,.99pcrit},PlotStyle->Directive[Dashed,Thick,B
 
 (* ::Input::Initialization:: *)
 tlPlotDiff[label_?StringQ,delta_,offsets_,t_,ampl_,pr_,gain_,as_:1]:=Module[{reflTX,mm},
-reflTX=({t[[2]]}~Join~Rest@t)^gain ampl Reverse[ Re@delta/Max@Abs@delta,2]\[Transpose];
+reflTX=Reverse[({t[[2]]}~Join~Rest@t)^gain] ampl Reverse[Re@delta/Max@Abs@delta,2]\[Transpose];
 mm=MinMax@reflTX;
 Module[{TToptns,is=500,tt=tlTravelTimes[layers,depth,#,.4,.8]&,lbls={{"t, s",None},{None,"x, km"}},cfg=Blend[{Black,White},(#-mm[[1]])/2]&,cfrb=Blend[{Blue,White,Red},(#+1)/2]&,colors={Cyan,Black,Green,Orange,Magenta}},
 TToptns={PlotLabel->label,AspectRatio->1,Frame->True,FrameTicks->{{Range[0,Max@t,.5],None},{None,Range[0,Max@offsets,.25]}},ScalingFunctions->{Identity,"Reverse"},PlotRange->{MinMax@offsets,-pr},ImageSize->is,FrameTicksStyle->Opacity[0],FrameLabel->lbls,LabelStyle->Directive[Opacity[0],FontSize->15,Bold,Black],FrameStyle->Opacity[0]};
